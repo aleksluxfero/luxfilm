@@ -1,6 +1,5 @@
 // bot/helpers.ts
 import axios from 'axios';
-import { parseStringPromise } from 'xml2js';
 import { MediaItem, ApiResponse } from '@/types/api';
 
 const API_BASE = 'https://portal.lumex.host/api';
@@ -53,11 +52,15 @@ export async function getRating(kinopoiskId: number): Promise<number> {
   try {
     const url = `https://rating.kinopoisk.ru/${kinopoiskId}.xml`;
     const res = await axios.get<string>(url);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const parsed: any = await parseStringPromise(res.data);
-    const rating = parsed?.rating?.kp_rating?.[0]?._ || '0';
-    const numericRating = parseFloat(rating);
-    return isNaN(numericRating) ? 0 : Math.round(numericRating * 10) / 10;
+    const xmlText = res.data;
+    
+    // Парсинг регулярным выражением
+    const match = xmlText.match(/<kp_rating[^>]*>([^<]+)<\/kp_rating>/);
+    if (match && match[1]) {
+      const rating = parseFloat(match[1]);
+      return isNaN(rating) ? 0 : Math.round(rating * 10) / 10;
+    }
+    return 0;
   } catch (e) {
     console.error('Rating fetch error:', e);
     return 0;
